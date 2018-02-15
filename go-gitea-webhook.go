@@ -124,46 +124,50 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	log.Printf("RemoteAddr: %v\n", r.RemoteAddr)
-
-	var hook api.PushPayload
-
+	//get the hook event from the headers
 	event := r.Header.Get("X-Gogs-Event")
+	if len(event) == 0 {
+		event = r.Header.Get("X-Gitea-Event")
+	}
+
+	//only push events are current supported
 	if event != "push" {
-		log.Printf("receive unknown event \"%s\"\n", event)
+		log.Printf("received unknown event \"%s\"\n", event)
 		return
 	}
 
 	//read request body
 	var data, err = ioutil.ReadAll(r.Body)
-	panicIf(err, "while reading request")
+	panicIf(err, "while reading request body")
 
 	//unmarshal request body
+	var hook api.PushPayload
 	err = json.Unmarshal(data, &hook)
-	panicIf(err, fmt.Sprintf("while unmarshaling request \"%s\"", b64.StdEncoding.EncodeToString(data)))
+	panicIf(err, fmt.Sprintf("while unmarshaling request base64(%s)", b64.StdEncoding.EncodeToString(data)))
 
 	log.Printf("received webhook on %s", hook.Repo.FullName)
 
 	//find matching config for repository name
 	for _, repo := range config.Repositories {
-		if repo.Name != hook.Repo.FullName {
-			continue
-		}
 
-		if repo.Secret != hook.Secret {
-			log.Printf("secret mismatch for repo %s\n", repo.Name)
-			continue
-		}
+		if repo.Name == hook.Repo.FullName || repo.Name == hook.Repo.HTMLURL {
 
-		//execute commands for repository
-		for _, cmd := range repo.Commands {
-			var command = exec.Command(cmd)
-			out, err := command.Output()
-			if err != nil {
-				log.Println(err)
-			} else {
-				log.Println("Executed: " + cmd)
-				log.Println("Output: " + string(out))
+			//check if the secret in the configuration matches the request
+			if repo.Secret != hook.Secret {
+				log.Printf("secret mismatch for repo %s\n", repo.Name)
+				continue
+			}
+
+			//execute commands for repository
+			for _, cmd := range repo.Commands {
+				var command = exec.Command(cmd)
+				out, err := command.Output()
+				if err != nil {
+					log.Println(err)
+				} else {
+					log.Println("Executed: " + cmd)
+					log.Println("Output: " + string(out))
+				}
 			}
 		}
 	}
