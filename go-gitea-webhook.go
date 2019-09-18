@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"syscall"
 
-	api "code.gitea.io/sdk/gitea"
+	api "code.gitea.io/gitea/modules/structs"
 )
 
 //ConfigRepository represents a repository from the config file
