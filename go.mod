@@ -1,4 +1,4 @@
-module mrexodia/go-gitea-webhook
+module github.com/mrexodia/go-gitea-webhook
 
 go 1.13
 
