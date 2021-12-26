@@ -17,3 +17,6 @@ go-gitea-webhook
 .glide/
 
 config\.json
+
+# GoLand
+.idea/
